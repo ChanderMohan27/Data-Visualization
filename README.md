@@ -4,9 +4,9 @@
 
 Crime in India is a pressing concern that demands thorough analysis and understanding. This data visualization project aims to conduct a State-wise Crime Analysis for the Year 2017. By utilizing R for data visualization, we intend to provide a comprehensive overview of crime statistics across different states in India, uncovering valuable insights from the data.
 
-## To check all project sildes follow the link 
+## Explore the Interactive Project Slides
 
-[Web-Hosted-Data-Analysis-slides](https://rpubs.com/Chander26/1035407).
+[Click here to interact with the Data Analysis Slides](https://rpubs.com/Chander26/1035407).
 
 ## R Language 
 
