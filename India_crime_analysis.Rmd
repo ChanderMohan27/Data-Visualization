@@ -1,0 +1,461 @@
+---
+title: "Crime in India"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(ggplot2)
+library(dplyr)
+library(plotly)
+library(forcats)
+library(tidyr)
+library(rgeos)
+library(maptools)
+library(ggmap)
+library(broom)
+library(leaflet)
+library(maps)
+library(sf)
+library(ggthemes)
+```
+
+```{r}
+crime_2016<- read.csv("/Users/chandermohan/Desktop/Data_visualization/NCRB_CII_2017_State_Table-2.2.csv")
+crime_2017<- read.csv("/Users/chandermohan/Desktop/Data_visualization/NCRB_CII_2018_State_Table2.2.csv")
+crime_2018<-read.csv("/Users/chandermohan/Desktop/Data_visualization/Table_2.2A_2016 (1).csv")
+colnames(crime_2016)[3] <- "ST_NM"
+colnames(crime_2016)[19] <- "Total_crime_2016"
+colnames(crime_2017)[3] <- "ST_NM"
+colnames(crime_2017)[19] <- "Total_crime_2017"
+colnames(crime_2018)[3] <- "ST_NM"
+colnames(crime_2018)[19] <- "Total_crime_2018"
+row_array_2016 <- crime_2016[39, -c(1,2,3,19) ]
+row_array_2017 <- crime_2017[39, -c(1,2,3,19) ]
+row_array_2018 <- crime_2018[39, -c(1,2,3,19) ]
+#new_df <- row_array %>%
+ # pivot_longer(cols = everything(), names_to = "Crime_Type", values_to = "Count")
+#new_df
+```
+
+```{r}
+simplified_names <- c("Murder", "Culpable_Homicide", "Dowry_Deaths", "Infanticide",
+                      "Foeticide", "Attempt_Murder", "Attempt_Culpable_Homicide",
+                      "Grievous_Hurt", "Kidnapping_Abduction", "Rape", "Attempt_Rape",
+                      "Rioting", "Robbery", "Dacoity", "Arson")
+colnames(row_array_2016) <- simplified_names
+
+colnames(row_array_2017) <- simplified_names
+
+colnames(row_array_2018) <- simplified_names
+
+df_transposed_2016 <- t(row_array_2016)
+
+# Create a new dataframe with the transposed data
+df_new_2016 <- data.frame(
+  Crime = row.names(df_transposed_2016),
+  Count_2016 = as.numeric(df_transposed_2016),
+  stringsAsFactors = FALSE
+)
+
+
+df_transposed_2017 <- t(row_array_2017)
+
+# Create a new dataframe with the transposed data
+df_new_2017 <- data.frame(
+  Crime = row.names(df_transposed_2017),
+  Count_2017 = as.numeric(df_transposed_2017),
+  stringsAsFactors = FALSE
+)
+
+df_transposed_2018 <- t(row_array_2018)
+
+# Create a new dataframe with the transposed data
+df_new_2018 <- data.frame(
+  Crime = row.names(df_transposed_2018),
+  Count_2018 = as.numeric(df_transposed_2018),
+  stringsAsFactors = FALSE
+)
+
+merged_df <- merge(df_new_2016, df_new_2017, by = "Crime")
+final<- merge(df_new_2018, merged_df, by = "Crime")
+final
+```
+
+```{r}
+
+p <- ggplot(df_new_2016, aes(x = reorder(Crime, Count_2016), y = Count_2016, fill = Crime)) +
+  geom_bar(stat = "identity",fill = "#377eb8",color= alpha("Black", 0.4)) +
+  labs(title = "Crime Statistics", x = "Crime", y = "Count") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  scale_y_continuous(labels = scales::comma_format()) 
+  
+# Print the plot
+print(p)
+```
+
+
+
+
+```{r}
+crime_2016$Total_crime_2017<-crime_2017$Total_crime_2017
+crime_2016$Total_crime_2018<-crime_2018$Total_crime_2018
+
+row_index <- which(crime_2016$`S..No` == "State")
+# Remove the row at the specified index
+crime_2016 <- crime_2016[-row_index, ]
+#crime_2016<-crime_2016[, ]
+row_index <- which(crime_2016$`S..No` == "Total All India")
+# Remove the row at the specified index
+crime_2016 <- crime_2016[-row_index, ]
+row_index <- which(crime_2016$`S..No` == "Union Territory")
+# Remove the row at the specified index
+crime_2016 <- crime_2016[-row_index, ]
+```
+
+```{r}
+#crime_2016<- crime_2016[-38, ]
+crime_2016
+```
+
+```{r}
+updatemenus <- list(
+  list(
+    active = 0,
+    x = -.125,
+    type= 'buttons',
+    buttons = list(
+      list(
+        label = "2016",
+        method = "update",
+        args = list(list(visible = c(TRUE, "legendonly", "legendonly"
+                                      )))),
+      list(
+        label = "2017",
+        method = "update",
+        args = list(list(visible = c("legendonly", TRUE, "legendonly"
+                                    )))),
+      list(
+        label = "2018",
+        method = "update",
+        args = list(list(visible = c("legendonly", "legendonly", TRUE)))) 
+     )
+     )
+  )
+
+
+p11 <- plot_ly(data = crime_2016) %>% 
+  
+  add_lines(x=~ST_NM, y=~Total_crime_2016, name = "2016- Crime", visible = "TRUE") %>%
+  add_lines(x=~ST_NM, y=~Total_crime_2017, name = "2017-Crime", visible = "legendonly") %>%
+  add_lines(x=~ST_NM, y=~Total_crime_2018, name = "2018-Crime", visible = "legendonly") %>%
+  
+  layout(title = "Texas Housing Market Time Series", showlegend=TRUE,
+         xaxis=list(zeroline = FALSE,title="State"),
+         yaxis=list(zeroline = FALSE,title="Number of Crimes"),
+         updatemenus=updatemenus)
+
+p11
+```
+
+## Column {data-width="650"}
+
+```{r}
+national<-readShapeSpatial("/Users/chandermohan/Desktop/maps-master/States/Admin2.shp",
+                          delete_null_obj=TRUE)
+national_simp <- gSimplify(national, tol = .001, topologyPreserve=TRUE)
+national_simp <- SpatialPolygonsDataFrame(national_simp,
+                                             data=national@data)
+print(object.size(national_simp), units = "MB")
+names(national_simp)
+names(crime_2016)
+```
+
+### Chart A
+
+```{r}
+national_simp <- gSimplify(national, tol = .001, topologyPreserve=TRUE)
+national_simp <- SpatialPolygonsDataFrame(national_simp,
+                                              data=national@data)
+print(object.size(national_simp), units = "MB")
+
+```
+
+```{r}
+crime_in_india_2016<-sp::merge(national_simp, crime_2016, by="ST_NM")
+crime_in_india_2017<-sp::merge(national_simp, crime_2017, by="ST_NM")
+crime_in_india_2018<-sp::merge(national_simp, crime_2018, by="ST_NM")
+
+```
+
+## Column {data-width="350"}
+
+### Chart B
+
+```{r}
+pal <- colorNumeric(
+  "RdBu",
+  domain = crime_in_india_2016$Total_crime
+  )
+```
+
+```{r}
+map <- leaflet(crime_in_india_2016) %>%
+  setView(lng =  77.4126, lat = 23.2599, zoom = 4)
+map %>% addPolygons(
+  fillColor = ~pal(Total_crime),
+  weight = 2,
+  opacity = 1,
+  color = "white",
+  dashArray = "3",
+  fillOpacity = 0.7)
+```
+
+```{r}
+map1 <- leaflet(crime_in_india_2016) %>%
+  setView(lng =  77.4126, lat = 23.2599, zoom = 4)
+map %>% addPolygons(
+  fillColor = ~pal(Total_crime),
+  weight = 2,
+  opacity = 1,
+  color = "white",
+  dashArray = "3",
+  fillOpacity = 0.7)
+labels <- sprintf(
+  "<strong>%s</strong><br/>%g Crime",
+  crime_in_india_2016$ST_NM,
+  crime_in_india_2016$Total_crime
+) %>% lapply(htmltools::HTML)
+
+library(htmlwidgets)
+library(htmltools)
+
+title <- tags$div(
+   HTML('<h3>Total Crime in India in 2016</h3>')
+ )
+
+map1 %>% addPolygons(
+  fillColor = ~pal(Total_crime),
+  weight = 2,
+  opacity = 1,
+  color = "white",
+  dashArray = "3",
+  fillOpacity = 0.7,
+  highlight = highlightOptions(
+    weight = 5,
+    color = "#666",
+    dashArray = "",
+    fillOpacity = 0.7,
+    bringToFront = TRUE),
+  label = labels,
+  labelOptions = labelOptions(
+    style = list("font-weight" = "normal", padding = "3px 8px"),
+    textsize = "15px",
+    direction = "auto")) %>%
+  addLegend(pal = pal,
+            values = ~Total_crime,
+            opacity = 0.9, title = " Number of Crime",
+            position = "bottomright",
+            labFormat = labelFormat(suffix = " Crime")
+            ) %>%
+  addControl(title, position = "topright")
+```
+
+### Chart C
+
+```{r}
+currentYear <- 2016
+currentData <- crime_in_india_2016
+
+updatemenus <- list(
+  list(
+    active = 0,
+    type = "buttons",
+    buttons = list(
+      list(
+        label = "2016",
+        method = "update",
+        args = list(list(visible = list(TRUE, FALSE, FALSE)))
+      ),
+      list(
+        label = "2017",
+        method = "update",
+        args = list(list(visible = list(FALSE, TRUE, FALSE)))
+      ),
+      list(
+        label = "2018",
+        method = "update",
+        args = list(list(visible = list(FALSE, FALSE, TRUE)))
+      )
+    )
+  )
+)
+actionButton("yearButton", "Change Year")
+currentData <- crime_in_india_2016
+current
+```
+
+```{r}
+updatemenus <- list(
+  list(
+    active = 0,
+    x = -.125,
+    type= 'buttons',
+    buttons = list(
+      list(
+        label = "2016",
+        method = "update",
+        args = list(list(visible = c(TRUE, "legendonly", "legendonly"
+                                      )))),
+      list(
+        label = "2017",
+        method = "update",
+        args = list(list(visible = c("legendonly", TRUE, "legendonly"
+                                      )))),
+      list(
+        label = "2018",
+        method = "update",
+        args = list(list(visible = c("legendonly", "legendonly", TRUE
+                                    ))))
+    )
+  )
+)
+map2 <- leaflet(crime_in_india_2017) %>%
+  setView(lng =  77.4126, lat = 23.2599, zoom = 4)
+map2 %>% addPolygons(
+  fillColor = ~pal(Total_crime),
+  weight = 2,
+  opacity = 1,
+  color = "white",
+  dashArray = "3",
+  fillOpacity = 0.7)
+labels <- sprintf(
+  "<strong>%s</strong><br/>%g Crime",
+  crime_in_india_2017$ST_NM,
+  crime_in_india_2017$Total_crime
+) %>% lapply(htmltools::HTML)
+
+title <- tags$div(
+   HTML('<h3>Total Crime in India in 2017</h3>')
+ )
+
+map2 %>% addPolygons(
+  fillColor = ~pal(Total_crime),
+  weight = 2,
+  opacity = 1,
+  color = "white",
+  dashArray = "3",
+  fillOpacity = 0.7,
+  highlight = highlightOptions(
+    weight = 5,
+    color = "#666",
+    dashArray = "",
+    fillOpacity = 0.7,
+    bringToFront = TRUE),
+  label = labels,
+  labelOptions = labelOptions(
+    style = list("font-weight" = "normal", padding = "3px 8px"),
+    textsize = "15px",
+    direction = "auto")) %>%
+  addLegend(pal = pal,
+            values = ~Total_crime,
+            opacity = 0.6, title = " Number of Crime",
+            position = "bottomright",
+            labFormat = labelFormat(suffix = " Crime")
+            ) %>%
+  addControl(title, position = "topright")
+
+map3 <- leaflet(crime_in_india_2018) %>%
+  setView(lng =  77.4126, lat = 23.2599, zoom = 4)
+map3 %>% addPolygons(
+  fillColor = ~pal(Total_crime),
+  weight = 2,
+  opacity = 1,
+  color = "white",
+  dashArray = "3",
+  fillOpacity = 0.7)
+labels <- sprintf(
+  "<strong>%s</strong><br/>%g Crime",
+  crime_in_india_2018$ST_NM,
+  crime_in_india_2018$Total_crime
+) %>% lapply(htmltools::HTML)
+
+title <- tags$div(
+   HTML('<h3>Total Crime in India in 2018</h3>')
+ )
+
+map3 %>% addPolygons(
+  fillColor = ~pal(Total_crime),
+  weight = 2,
+  opacity = 1,
+  color = "white",
+  dashArray = "3",
+  fillOpacity = 0.7,
+  highlight = highlightOptions(
+    weight = 5,
+    color = "#666",
+    dashArray = "",
+    fillOpacity = 0.7,
+    bringToFront = TRUE),
+  label = labels,
+  labelOptions = labelOptions(
+    style = list("font-weight" = "normal", padding = "3px 8px"),
+    textsize = "15px",
+    direction = "auto")) %>%
+  addLegend(pal = pal,
+            values = ~Total_crime,
+            opacity = 0.7, title = " Number of Crime",
+            position = "bottomright",
+            labFormat = labelFormat(suffix = " Crime")
+            ) %>%
+  addControl(title, position = "topright")
+
+
+```
+
+```{r}
+police_case_2017<- read.csv("/Users/chandermohan/Desktop/Data_visualization/NCRB_CII_2017_State_Table-16A.5.csv")
+
+```
+```{r}
+
+
+crime_2017$police_case<- police_case_2017$Number.of.Cases...Registered
+row_index <- which(crime_2017$`S..No` == "State")
+# Remove the row at the specified index
+crime_2017 <- crime_2017[-row_index, ]
+row_index <- which(crime_2017$`S..No` == "Total All India")
+# Remove the row at the specified index
+crime_2017 <- crime_2016[-row_index, ]
+row_index <- which(crime_2017$`S..No` == "Union Territory")
+# Remove the row at the specified index
+crime_2017 <- crime_2017[-row_index, ]
+crime_2017
+```
+
+```
+```{r}
+p1<-ggplot(crime_2017, aes(x = `police_case`, y = `Total_crime_2017`, label = `ST_NM`,color =`ST_NM`)) +
+      geom_point() +
+      geom_text(size = 3, vjust = 1.5)+
+      scale_color_hue() +
+      labs(title = "Relationship between Protein Cost and Carbon Emission", subtitle = "Per 20 grams of Protein across Different Protein Sources", x = "Protein Cost per 20 grams(USD)", y = "Carbon Emission(KG) per 20 grams of protein") +
+  scale_x_continuous(breaks = seq(0, 3, by = 0.2))+
+  scale_y_continuous(breaks = seq(0, 4, by = 0.4))+
+ 
+  theme_bw()
+p1
+```
+
+
+
+
+
+
+
+
+
